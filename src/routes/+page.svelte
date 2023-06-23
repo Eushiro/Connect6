@@ -14,16 +14,15 @@
 	}
 
 	let turn = Stone.Black;
-	let stonesPlaced = 0;
-	let stoneLimit = 1;
 	let win = false;
+	let backendUrl = 'https://connect6-3.onrender.com/';
 
 	let socket: WebSocket;
 	let websocketPort = '8080';
 
 	if (typeof window !== 'undefined') {
 		// Create WebSocket connection
-		socket = new WebSocket('ws://localhost:' + websocketPort);
+		socket = new WebSocket(backendUrl + websocketPort);
 
 		// Connection opened
 		socket.addEventListener('open', (event) => {
@@ -36,25 +35,23 @@
 			const gameState = JSON.parse(event.data);
 			grid = gameState.grid;
 			turn = gameState.turn;
-			stonesPlaced = gameState.stonesPlaced;
-			stoneLimit = gameState.stoneLimit;
 			win = gameState.win;
 		});
 	}
 	async function undoTurn() {
-		await fetch('http://localhost:3000/undoTurn');
+		await fetch(backendUrl + 'undoTurn');
 	}
 
 	async function resetGame() {
-		await fetch('http://localhost:3000/resetGame');
+		await fetch(backendUrl + 'resetGame');
 	}
 
 	async function confirm() {
-		await fetch('http://localhost:3000/confirm');
+		await fetch(backendUrl + 'confirm');
 	}
 
 	async function onSquareClick(i: number, j: number) {
-		await fetch(`http://localhost:3000/placeStone?i=${i}&j=${j}`);
+		await fetch(backendUrl + `placeStone?i=${i}&j=${j}`);
 	}
 </script>
 
