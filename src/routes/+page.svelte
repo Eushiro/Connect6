@@ -18,11 +18,10 @@
 	let backendUrl = 'https://connect6-3.onrender.com/';
 
 	let socket: WebSocket;
-	let websocketPort = '8080';
 
 	if (typeof window !== 'undefined') {
 		// Create WebSocket connection
-		socket = new WebSocket('wss://connect6-3.onrender.com:' + websocketPort);
+		socket = new WebSocket('wss://connect6-3.onrender.com');
 
 		// Connection opened
 		socket.addEventListener('open', (event) => {
