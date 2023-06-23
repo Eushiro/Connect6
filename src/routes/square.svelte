@@ -12,8 +12,8 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <div class="container" on:click={onClick}>
 	<div class="inner">
-		<div class="line horizontal" class:top={i === 0} class:bottom={i === 18} />
-		<div class="line vertical" class:left={j === 0} class:right={j === 18} />
+		<div class="line horizontal" class:left={j === 0} class:right={j === 18} />
+		<div class="line vertical" class:top={i === 0} class:bottom={i === 18} />
 		<div class:white={stone === Stone.White} class:black={stone === Stone.Black} />
 		{#if starPoint}
 			<div class="star-point" />
@@ -48,14 +48,14 @@
 		height: 1px;
 	}
 
-	.horizontal.top {
+	.horizontal.left {
 		left: 50%;
-		width: 100%;
+		width: 50%;
 	}
 
-	.horizontal.bottom {
-		left: 10%;
-		width: 100%;
+	.horizontal.right {
+		right: 50%;
+		width: 50%;
 	}
 
 	.vertical {
@@ -65,14 +65,14 @@
 		height: 100%;
 	}
 
-	.vertical.left {
+	.vertical.top {
 		top: 50%;
-		height: 100%;
+		height: 50%;
 	}
 
-	.vertical.right {
-		top: 50%;
-		height: 100%;
+	.vertical.bottom {
+		bottom: 50%;
+		height: 50%;
 	}
 
 	.white,
@@ -85,6 +85,7 @@
 		border-radius: 50%;
 		transform: translate(-50%, -50%);
 		box-shadow: 0px 0px 5px 0px rgba(0, 0, 0, 0.75);
+		z-index: 3;
 	}
 
 	.white {
@@ -104,5 +105,6 @@
 		background-color: #000;
 		border-radius: 50%;
 		transform: translate(-50%, -50%);
+		z-index: 2;
 	}
 </style>

@@ -16,12 +16,14 @@
 	let turn = Stone.Black;
 	let stonesPlaced = 0;
 	let stoneLimit = 1;
+	let win = false;
 
 	let socket: WebSocket;
+	let websocketPort = '8080';
 
 	if (typeof window !== 'undefined') {
 		// Create WebSocket connection
-		socket = new WebSocket('ws://localhost:3000');
+		socket = new WebSocket('ws://localhost:' + websocketPort);
 
 		// Connection opened
 		socket.addEventListener('open', (event) => {
@@ -36,6 +38,7 @@
 			turn = gameState.turn;
 			stonesPlaced = gameState.stonesPlaced;
 			stoneLimit = gameState.stoneLimit;
+			win = gameState.win;
 		});
 	}
 	async function undoTurn() {
@@ -47,19 +50,10 @@
 	}
 
 	async function confirm() {
-		if (stonesPlaced == stoneLimit) {
-			await fetch('http://localhost:3000/confirm');
-		}
+		await fetch('http://localhost:3000/confirm');
 	}
 
 	async function onSquareClick(i: number, j: number) {
-		if (grid[i][j] !== Stone.None || stonesPlaced === stoneLimit) {
-			return;
-		}
-
-		stonesPlaced += 1;
-		grid[i][j] = turn;
-
 		await fetch(`http://localhost:3000/placeStone?i=${i}&j=${j}`);
 	}
 </script>
@@ -72,6 +66,13 @@
 			<p>It's black's turn</p>
 		{:else}
 			<p>It's white's turn</p>
+		{/if}
+		{#if win}
+			{#if turn === Stone.Black}
+				<p class="win">Black Wins!</p>
+			{:else}
+				<p class="win">White Wins!</p>
+			{/if}
 		{/if}
 	</div>
 	<div class="grid">
@@ -99,6 +100,10 @@
 	p {
 		font-family: Arial, Helvetica, sans-serif;
 		font-size: larger;
+	}
+
+	.win {
+		font-size: xx-large;
 	}
 	.grid {
 		width: min(93vw, 93vh);
