@@ -15,6 +15,8 @@
 
 	let turn = Stone.Black;
 	let win = false;
+	let stonesPlaced = 0;
+	let stoneLimit = 1;
 	let backendUrl = 'https://connect6-3.onrender.com/';
 
 	let socket: WebSocket;
@@ -34,6 +36,8 @@
 			const gameState = JSON.parse(event.data);
 			grid = gameState.grid;
 			turn = gameState.turn;
+			stoneLimit = gameState.stoneLimit;
+			stonesPlaced = gameState.stonesPlaced;
 			win = gameState.win;
 		});
 	}
@@ -50,6 +54,10 @@
 	}
 
 	async function onSquareClick(i: number, j: number) {
+		if (grid[i][j] !== Stone.None || stonesPlaced === stoneLimit) {
+			return;
+		}
+		grid[i][j] = turn;
 		await fetch(backendUrl + `placeStone?i=${i}&j=${j}`);
 	}
 </script>
