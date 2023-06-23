@@ -22,7 +22,7 @@
 
 	if (typeof window !== 'undefined') {
 		// Create WebSocket connection
-		socket = new WebSocket('wss://connect6-3.onrender.com/' + websocketPort);
+		socket = new WebSocket('wss://connect6-3.onrender.com:' + websocketPort);
 
 		// Connection opened
 		socket.addEventListener('open', (event) => {
