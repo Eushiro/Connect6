@@ -1,17 +1,13 @@
 <script lang="ts">
 	import { Stone } from './stone.svelte';
 	import Square from './square.svelte';
+	import { onMount, onDestroy } from 'svelte';
 
 	// Initialize grid to empty
 	let gridSize = 19;
-	let grid: Array<Array<number>> = [];
-	for (let i = 0; i < gridSize; i++) {
-		let arr = [];
-		for (let j = 0; j < gridSize; j++) {
-			arr.push(Stone.None);
-		}
-		grid.push(arr);
-	}
+	let grid: Array<Array<number>> = Array(gridSize)
+		.fill()
+		.map(() => Array(gridSize).fill(Stone.None));
 
 	let turn = Stone.Black;
 	let win = false;
@@ -20,6 +16,8 @@
 	let backendUrl = 'https://connect6-3.onrender.com/';
 
 	let socket: WebSocket;
+	let connected = false;
+	let movesThisTurn: Array<Array<number>> = [];
 
 	if (typeof window !== 'undefined') {
 		// Create WebSocket connection
@@ -28,6 +26,12 @@
 		// Connection opened
 		socket.addEventListener('open', (event) => {
 			socket.send('Hello Server!');
+			connected = true;
+		});
+
+		socket.addEventListener('close', (event) => {
+			socket.send('Goodbye Server!');
+			connected = false;
 		});
 
 		// Listen for messages
@@ -39,13 +43,22 @@
 			stoneLimit = gameState.stoneLimit;
 			stonesPlaced = gameState.stonesPlaced;
 			win = gameState.win;
+			movesThisTurn = gameState.movesThisTurn;
 		});
 	}
 	async function undoTurn() {
+		movesThisTurn.forEach((move) => {
+			grid[move[0]][move[1]] = Stone.None;
+		});
+		stonesPlaced = 0;
+		movesThisTurn = [];
 		await fetch(backendUrl + 'undoTurn');
 	}
 
 	async function resetGame() {
+		grid = Array(gridSize)
+			.fill()
+			.map(() => Array(gridSize).fill(Stone.None));
 		await fetch(backendUrl + 'resetGame');
 	}
 
@@ -58,14 +71,41 @@
 			return;
 		}
 		grid[i][j] = turn;
+		movesThisTurn.push([i, j]);
 		await fetch(backendUrl + `placeStone?i=${i}&j=${j}`);
 	}
+
+	// Listen for key presses
+	onMount(() => {
+		window.addEventListener('keypress', (event) => {
+			switch (event.key) {
+				case 'c':
+					confirm();
+					break;
+				case 'Enter':
+					confirm();
+					break;
+				case 'r':
+					resetGame();
+					break;
+				case 'u':
+					undoTurn();
+					break;
+				default:
+					break;
+			}
+		});
+	});
+
+	onDestroy(() => {
+		socket?.close();
+	});
 </script>
 
 <div class="screen">
 	<div>
-		<button class="controls" on:click={undoTurn}>Undo Turn</button>
-		<button class="controls" on:click={confirm}>Confirm</button>
+		<button class="controls undo" on:click={undoTurn}>Undo Turn (u)</button>
+		<button class="controls confirm" on:click={confirm}>Confirm (c)</button>
 		{#if turn === Stone.Black}
 			<p>It's black's turn</p>
 		{:else}
@@ -78,6 +118,11 @@
 				<p class="win">White Wins!</p>
 			{/if}
 		{/if}
+		{#if !connected}
+			<p class="disconnected">Connecting to server...</p>
+		{:else}
+			<p class="connected">Connected to server</p>
+		{/if}
 	</div>
 	<div class="grid">
 		{#each grid as line, i}
@@ -86,7 +131,7 @@
 			{/each}
 		{/each}
 	</div>
-	<button class="controls reset" on:click={resetGame}>Reset Game </button>
+	<button class="controls reset" on:click={resetGame}>Reset Game (r) </button>
 </div>
 
 <style>
@@ -106,6 +151,13 @@
 		font-size: larger;
 	}
 
+	.disconnected {
+		color: lightcoral;
+	}
+
+	.connected {
+		color: lightgreen;
+	}
 	.win {
 		font-size: xx-large;
 	}
@@ -115,5 +167,63 @@
 		display: grid;
 		grid-template-columns: repeat(19, 1fr);
 		grid-template-rows: repeat(19, 1fr);
+	}
+
+	/* CSS */
+	.controls {
+		align-items: center;
+		background-clip: padding-box;
+		background-color: #405cf5;
+		border: 1px solid transparent;
+		border-radius: 0.25rem;
+		box-shadow: rgba(0, 0, 0, 0.02) 0 1px 3px 0;
+		box-sizing: border-box;
+		color: #fff;
+		cursor: pointer;
+		display: inline-flex;
+		font-family: -apple-system, system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Ubuntu, sans-serif;
+		font-size: 16px;
+		font-weight: 500;
+		justify-content: center;
+		line-height: 1.25;
+		margin: 8px;
+		min-height: 3rem;
+		padding: calc(0.875rem - 1px) calc(1.5rem - 1px);
+		position: relative;
+		text-decoration: none;
+		transition: all 250ms;
+		user-select: none;
+		-webkit-user-select: none;
+		touch-action: manipulation;
+		vertical-align: baseline;
+		width: auto;
+	}
+
+	.controls:hover,
+	.controls:focus {
+		background-color: #7e8bf3;
+		box-shadow: rgba(0, 0, 0, 0.1) 0 4px 12px;
+	}
+
+	.controls:hover {
+		transform: translateY(-1px);
+	}
+
+	.controls:active {
+		background-color: #7e8bf3;
+		box-shadow: rgba(0, 0, 0, 0.06) 0 2px 4px;
+		transform: translateY(0);
+	}
+
+	.reset {
+		margin: 8px;
+	}
+
+	.undo {
+		margin: 4px 4px 8px 0px;
+	}
+
+	.confirm {
+		margin: 4px 8px 8px 4px;
 	}
 </style>
