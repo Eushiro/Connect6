@@ -13,8 +13,8 @@
 	let win = false;
 	let stonesPlaced = 0;
 	let stoneLimit = 1;
-	// let backendUrl = 'https://connect6-3.onrender.com/';
-	let backendUrl = 'http://localhost:3000/';
+	let backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000/';
+	let socketUrl = import.meta.env.VITE_SOCKET_URL || 'ws://localhost:3000';
 
 	let socket: WebSocket;
 	let connected = false;
@@ -24,8 +24,7 @@
 
 	if (typeof window !== 'undefined') {
 		// Create WebSocket connection
-		// socket = new WebSocket('wss://connect6-3.onrender.com');
-		socket = new WebSocket('ws://localhost:3000');
+		socket = new WebSocket(socketUrl);
 
 		// Connection opened
 		socket.addEventListener('open', (event) => {
