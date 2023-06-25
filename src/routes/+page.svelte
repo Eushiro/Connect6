@@ -68,6 +68,10 @@
 	}
 
 	async function confirm() {
+		if (stonesPlaced !== stoneLimit) {
+			return;
+		}
+		movesThisTurn = [];
 		await fetch(backendUrl + 'confirm');
 	}
 
