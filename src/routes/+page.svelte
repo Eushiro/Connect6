@@ -3,78 +3,40 @@
 	import Square from './square.svelte';
 	import { onMount, onDestroy } from 'svelte';
 
-	// Initialize grid to empty
-	let gridSize = 19;
-	let grid: Array<Array<number>> = Array(gridSize)
-		.fill()
-		.map(() => Array(gridSize).fill(Stone.None));
+	// Constants
+	const gridSize = 19;
+	const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000/';
+	const socketUrl = import.meta.env.VITE_SOCKET_URL || 'ws://localhost:3000';
 
+	// Game states
+	let grid: Array<Array<number>> = createEmptyGrid();
 	let turn = Stone.Black;
-	let win = false;
+	let winner = Stone.None;
 	let stonesPlaced = 0;
 	let stoneLimit = 1;
-	let backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000/';
-	let socketUrl = import.meta.env.VITE_SOCKET_URL || 'ws://localhost:3000';
+	let movesThisTurn: Array<Array<number>> = [];
 
+	// Connection states
 	let socket: WebSocket;
 	let connected = false;
-	let movesThisTurn: Array<Array<number>> = [];
-	let previousStates: Array<any> = [];
-	let futureStates: Array<any>[];
 
-	if (typeof window !== 'undefined') {
-		// Create WebSocket connection
-		socket = new WebSocket(socketUrl);
-
-		// Connection opened
-		socket.addEventListener('open', (event) => {
-			socket.send('Hello Server!');
-			connected = true;
-		});
-
-		socket.addEventListener('close', (event) => {
-			socket.send('Goodbye Server!');
-			connected = false;
-		});
-
-		// Listen for messages
-		socket.addEventListener('message', (event) => {
-			console.log('Message from server ', event.data);
-			const gameState = JSON.parse(event.data);
-			grid = gameState.grid;
-			turn = gameState.turn;
-			stoneLimit = gameState.stoneLimit;
-			stonesPlaced = gameState.stonesPlaced;
-			win = gameState.win;
-			movesThisTurn = gameState.movesThisTurn;
-			previousStates = gameState.previousStates;
-			futureStates = gameState.futureStates;
-		});
-	}
-	async function undoTurn() {
-		movesThisTurn.forEach((move) => {
-			grid[move[0]][move[1]] = Stone.None;
-		});
-		stonesPlaced = 0;
-		movesThisTurn = [];
-		await fetch(backendUrl + 'undoTurn');
-	}
-
-	async function resetGame() {
-		grid = Array(gridSize)
+	// Helper functions
+	function createEmptyGrid() {
+		return Array(gridSize)
 			.fill()
 			.map(() => Array(gridSize).fill(Stone.None));
-		await fetch(backendUrl + 'resetGame');
 	}
 
-	async function confirm() {
-		if (stonesPlaced !== stoneLimit) {
-			return;
-		}
-		movesThisTurn = [];
-		await fetch(backendUrl + 'confirm');
+	function fetchAction(action: string, params?: string) {
+		return fetch(backendUrl + action + (params ?? ''));
 	}
 
+	async function updateGrid(action: string, params?: string) {
+		grid = createEmptyGrid();
+		await fetchAction(action, params);
+	}
+
+	// Click actions
 	async function onSquareClick(i: number, j: number) {
 		if (grid[i][j] !== Stone.None || stonesPlaced === stoneLimit) {
 			return;
@@ -82,38 +44,75 @@
 		grid[i][j] = turn;
 		stonesPlaced++;
 		movesThisTurn.push([i, j]);
-		movesThisTurn = movesThisTurn;
-		await fetch(backendUrl + `placeStone?i=${i}&j=${j}`);
+		await fetchAction('placeStone', `?i=${i}&j=${j}`);
 	}
 
+	// Game actions
+	async function undoTurn() {
+		movesThisTurn.forEach((move) => (grid[move[0]][move[1]] = Stone.None));
+		stonesPlaced = 0;
+		movesThisTurn = [];
+		await fetchAction('undoTurn');
+	}
+
+	async function resetGame() {
+		await updateGrid('resetGame');
+	}
+
+	async function confirm() {
+		if (stonesPlaced !== stoneLimit) {
+			return;
+		}
+		movesThisTurn = [];
+		await fetchAction('confirm');
+	}
+
+	// Undo and Redo actions
 	async function undoMove() {
-		await fetch(backendUrl + 'undoMove');
+		await fetchAction('undoMove');
 	}
 
 	async function redoMove() {
-		await fetch(backendUrl + 'redoMove');
+		await fetchAction('redoMove');
 	}
 
-	// Listen for key presses
+	// Initialize WebSocket
 	onMount(() => {
-		window.addEventListener('keypress', (event) => {
-			switch (event.key) {
-				case 'c':
-					confirm();
-					break;
-				case 'Enter':
-					confirm();
-					break;
-				case 'r':
-					resetGame();
-					break;
-				case 'u':
-					undoTurn();
-					break;
-				default:
-					break;
-			}
-		});
+		if (typeof window !== 'undefined') {
+			socket = new WebSocket(socketUrl);
+
+			socket.addEventListener('open', () => (connected = true));
+			socket.addEventListener('close', () => {
+				socket.send('Goodbye Server!');
+				connected = false;
+			});
+
+			socket.addEventListener('message', (event) => {
+				const gameState = JSON.parse(event.data);
+				({ grid, turn, stoneLimit, stonesPlaced, winner, movesThisTurn } = gameState);
+			});
+
+			window.addEventListener('keypress', (event) => {
+				switch (event.key) {
+					case 'c':
+					case 'Enter':
+						confirm();
+						break;
+					case 'r':
+						resetGame();
+						break;
+					case 'u':
+						undoTurn();
+						break;
+					case 'd':
+						undoMove();
+						break;
+					case 'f':
+						redoMove();
+						break;
+				}
+			});
+		}
 	});
 
 	onDestroy(() => {
@@ -126,15 +125,15 @@
 		<button class="controls undo" on:click={undoTurn}>Undo Turn (u)</button>
 		<button class="controls confirm" on:click={confirm}>Confirm (c)</button>
 		<div class="break" />
-		<button class="controls undo" on:click={undoMove}>Undo Move</button>
-		<button class="controls undo" on:click={redoMove}>Redo Move</button>
+		<button class="controls undo" on:click={undoMove}>Undo Move (d)</button>
+		<button class="controls undo" on:click={redoMove}>Redo Move (f)</button>
 		{#if turn === Stone.Black}
 			<p>It's black's turn</p>
 		{:else}
 			<p>It's white's turn</p>
 		{/if}
-		{#if win}
-			{#if turn === Stone.Black}
+		{#if winner !== Stone.None}
+			{#if winner === Stone.Black}
 				<p class="win">Black Wins!</p>
 			{:else}
 				<p class="win">White Wins!</p>
@@ -244,11 +243,6 @@
 		background-color: #7e8bf3;
 		box-shadow: rgba(0, 0, 0, 0.06) 0 2px 4px;
 		transform: translateY(0);
-	}
-
-	.break-column {
-		flex-basis: 100%;
-		width: 0;
 	}
 
 	.reset {
