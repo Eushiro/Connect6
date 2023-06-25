@@ -44,6 +44,7 @@
 		grid[i][j] = turn;
 		stonesPlaced++;
 		movesThisTurn.push([i, j]);
+		movesThisTurn = movesThisTurn;
 		await fetchAction('placeStone', `?i=${i}&j=${j}`);
 	}
 
