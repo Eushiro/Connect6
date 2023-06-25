@@ -91,6 +91,7 @@
 			socket.addEventListener('message', (event) => {
 				const gameState = JSON.parse(event.data);
 				({ grid, turn, stoneLimit, stonesPlaced, winner, movesThisTurn } = gameState);
+				console.log(gameState);
 			});
 
 			window.addEventListener('keypress', (event) => {
