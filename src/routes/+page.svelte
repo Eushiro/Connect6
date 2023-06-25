@@ -13,15 +13,19 @@
 	let win = false;
 	let stonesPlaced = 0;
 	let stoneLimit = 1;
-	let backendUrl = 'https://connect6-3.onrender.com/';
+	// let backendUrl = 'https://connect6-3.onrender.com/';
+	let backendUrl = 'http://localhost:3000/';
 
 	let socket: WebSocket;
 	let connected = false;
 	let movesThisTurn: Array<Array<number>> = [];
+	let previousStates: Array<any> = [];
+	let futureStates: Array<any>[];
 
 	if (typeof window !== 'undefined') {
 		// Create WebSocket connection
-		socket = new WebSocket('wss://connect6-3.onrender.com');
+		// socket = new WebSocket('wss://connect6-3.onrender.com');
+		socket = new WebSocket('ws://localhost:3000');
 
 		// Connection opened
 		socket.addEventListener('open', (event) => {
@@ -44,6 +48,8 @@
 			stonesPlaced = gameState.stonesPlaced;
 			win = gameState.win;
 			movesThisTurn = gameState.movesThisTurn;
+			previousStates = gameState.previousStates;
+			futureStates = gameState.futureStates;
 		});
 	}
 	async function undoTurn() {
@@ -71,8 +77,54 @@
 			return;
 		}
 		grid[i][j] = turn;
+		stonesPlaced++;
 		movesThisTurn.push([i, j]);
 		await fetch(backendUrl + `placeStone?i=${i}&j=${j}`);
+	}
+
+	async function undoMove() {
+		if (previousStates.length === 0) {
+			return;
+		}
+
+		// Get the last move
+		const lastMove = previousStates.pop();
+
+		// Revert the last move
+		grid[lastMove.i][lastMove.j] = lastMove.stone; // old stone
+		stonesPlaced = lastMove.stonesPlaced;
+		turn = lastMove.turn;
+		stoneLimit = lastMove.stoneLimit;
+		win = lastMove.win;
+
+		// Update movesThisTurn, remove the last move of the current turn
+		if (movesThisTurn.length > 0) {
+			movesThisTurn.pop();
+		}
+
+		// Push last move to futureStates for redo
+		futureStates.push(lastMove);
+		await fetch(backendUrl + 'undoMove');
+	}
+
+	async function redoMove() {
+		if (futureStates.length === 0) {
+			return;
+		}
+
+		// Get the last undone move
+		const undoneMove: any = futureStates.pop();
+
+		// Reapply the move
+		grid[undoneMove.i][undoneMove.j] = undoneMove.turn; // turn from the undone move
+		stonesPlaced = undoneMove.stonesPlaced + 1;
+		turn = undoneMove.turn;
+		stoneLimit = undoneMove.stoneLimit;
+		win = undoneMove.win; // You can re-check for a win here if needed
+
+		// Push the undone move back to previousStates for undo
+		previousStates.push(undoneMove);
+		await fetch(backendUrl + 'redoMove');
 	}
 
 	// Listen for key presses
@@ -91,6 +143,12 @@
 				case 'u':
 					undoTurn();
 					break;
+				case 'd':
+					undoMove();
+					break;
+				case 'f':
+					redoMove();
+					break;
 				default:
 					break;
 			}
@@ -106,6 +164,9 @@
 	<div>
 		<button class="controls undo" on:click={undoTurn}>Undo Turn (u)</button>
 		<button class="controls confirm" on:click={confirm}>Confirm (c)</button>
+		<div class="break" />
+		<button class="controls undo" on:click={undoMove}>Undo Move (d)</button>
+		<button class="controls undo" on:click={redoMove}>Redo Move (f)</button>
 		{#if turn === Stone.Black}
 			<p>It's black's turn</p>
 		{:else}
@@ -124,10 +185,19 @@
 			<p class="connected">Connected to server</p>
 		{/if}
 	</div>
+	<div class="break" />
 	<div class="grid">
 		{#each grid as line, i}
 			{#each line as square, j}
-				<Square stone={square} {i} {j} onClick={() => onSquareClick(i, j)} />
+				<Square
+					stone={square}
+					{i}
+					{j}
+					onClick={() => onSquareClick(i, j)}
+					newlyPlaced={movesThisTurn.some((v) => {
+						return v[0] == i && v[1] == j;
+					})}
+				/>
 			{/each}
 		{/each}
 	</div>
@@ -196,7 +266,7 @@
 		-webkit-user-select: none;
 		touch-action: manipulation;
 		vertical-align: baseline;
-		width: auto;
+		width: 175px;
 	}
 
 	.controls:hover,
@@ -215,6 +285,11 @@
 		transform: translateY(0);
 	}
 
+	.break-column {
+		flex-basis: 100%;
+		width: 0;
+	}
+
 	.reset {
 		margin: 8px;
 	}
@@ -224,6 +299,6 @@
 	}
 
 	.confirm {
-		margin: 4px 8px 8px 4px;
+		margin: 4px 8px 8px 0px;
 	}
 </style>

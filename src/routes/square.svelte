@@ -4,6 +4,7 @@
 	export let onClick: any;
 	export let i: number;
 	export let j: number;
+	export let newlyPlaced: boolean; // newly added
 
 	// Determine if the square is a star point
 	let starPoint = (i === 3 || i === 9 || i === 15) && (j === 3 || j === 9 || j === 15);
@@ -14,7 +15,11 @@
 	<div class="inner">
 		<div class="line horizontal" class:left={j === 0} class:right={j === 18} />
 		<div class="line vertical" class:top={i === 0} class:bottom={i === 18} />
-		<div class:white={stone === Stone.White} class:black={stone === Stone.Black} />
+		<div
+			class:glow={newlyPlaced && stone !== Stone.None}
+			class:white={stone === Stone.White}
+			class:black={stone === Stone.Black}
+		/>
 		{#if starPoint}
 			<div class="star-point" />
 		{/if}
@@ -106,5 +111,11 @@
 		border-radius: 50%;
 		transform: translate(-50%, -50%);
 		z-index: 2;
+	}
+
+	.glow {
+		-webkit-box-shadow: 0px 0px 5px 4px rgba(123, 252, 220, 0.76);
+		-moz-box-shadow: 0px 0px 5px 4px rgba(123, 252, 220, 0.76);
+		box-shadow: 0px 0px 5px 4px rgba(123, 252, 220, 0.76);
 	}
 </style>
