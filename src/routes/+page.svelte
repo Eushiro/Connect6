@@ -126,8 +126,8 @@
 		<button class="controls undo" on:click={undoTurn}>Undo Turn (u)</button>
 		<button class="controls confirm" on:click={confirm}>Confirm (c)</button>
 		<div class="break" />
-		<button class="controls undo" on:click={undoMove}>Undo Move (d)</button>
-		<button class="controls undo" on:click={redoMove}>Redo Move (f)</button>
+		<button class="controls undo" on:click={undoMove}>Undo Move</button>
+		<button class="controls undo" on:click={redoMove}>Redo Move</button>
 		{#if turn === Stone.Black}
 			<p>It's black's turn</p>
 		{:else}
