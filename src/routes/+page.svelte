@@ -87,47 +87,10 @@
 	}
 
 	async function undoMove() {
-		if (previousStates.length === 0) {
-			return;
-		}
-
-		// Get the last move
-		const lastMove = previousStates.pop();
-
-		// Revert the last move
-		grid[lastMove.i][lastMove.j] = lastMove.stone; // old stone
-		stonesPlaced = lastMove.stonesPlaced;
-		turn = lastMove.turn;
-		stoneLimit = lastMove.stoneLimit;
-		win = lastMove.win;
-
-		// Update movesThisTurn, remove the last move of the current turn
-		if (movesThisTurn.length > 0) {
-			movesThisTurn.pop();
-		}
-
-		// Push last move to futureStates for redo
-		futureStates.push(lastMove);
 		await fetch(backendUrl + 'undoMove');
 	}
 
 	async function redoMove() {
-		if (futureStates.length === 0) {
-			return;
-		}
-
-		// Get the last undone move
-		const undoneMove: any = futureStates.pop();
-
-		// Reapply the move
-		grid[undoneMove.i][undoneMove.j] = undoneMove.turn; // turn from the undone move
-		stonesPlaced = undoneMove.stonesPlaced + 1;
-		turn = undoneMove.turn;
-		stoneLimit = undoneMove.stoneLimit;
-		win = undoneMove.win; // You can re-check for a win here if needed
-
-		// Push the undone move back to previousStates for undo
-		previousStates.push(undoneMove);
 		await fetch(backendUrl + 'redoMove');
 	}
 
@@ -146,12 +109,6 @@
 					break;
 				case 'u':
 					undoTurn();
-					break;
-				case 'd':
-					undoMove();
-					break;
-				case 'f':
-					redoMove();
 					break;
 				default:
 					break;
