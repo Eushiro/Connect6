@@ -64,7 +64,6 @@
 		if (stonesPlaced !== stoneLimit) {
 			return;
 		}
-		movesThisTurn = [];
 		await fetchAction('confirm');
 	}
 
