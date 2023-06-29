@@ -85,7 +85,7 @@
 
 	async function createGame() {
 		try {
-			const response = await axios.post('http://localhost:3000/createGame');
+			const response = await axios.post(backendUrl + 'createGame');
 			gameId = response.data.gameId;
 			connectToGame(gameId);
 			popupVisible = false;
@@ -99,7 +99,7 @@
 		joinGameSelected = true;
 		if (gameId) {
 			try {
-				const response = await axios.post('http://localhost:3000/joinGame', { gameId });
+				const response = await axios.post(backendUrl + 'joinGame', { gameId });
 				if (response.data.success) {
 					connectToGame(gameId);
 					popupVisible = false;
@@ -115,7 +115,7 @@
 	let ws: WebSocket;
 
 	function connectToGame(gameId: string) {
-		socket = new WebSocket('ws://localhost:3000');
+		socket = new WebSocket(socketUrl);
 
 		socket.onopen = () => {
 			console.log(`Connected to game ${gameId}`);
