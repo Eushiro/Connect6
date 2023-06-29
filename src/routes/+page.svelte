@@ -95,20 +95,18 @@
 	}
 
 	async function joinGame() {
-		gameId = joinGameId;
 		joinGameSelected = true;
-		if (gameId) {
-			try {
-				const response = await axios.post(backendUrl + 'joinGame', { gameId });
-				if (response.data.success) {
-					connectToGame(gameId);
-					popupVisible = false;
-				} else {
-					alert('Could not join game');
-				}
-			} catch (err) {
+		try {
+			const response = await axios.post(backendUrl + 'joinGame', { joinGameId });
+			if (response.data.success) {
+				connectToGame(joinGameId);
+				gameId = joinGameId;
+				popupVisible = false;
+			} else {
 				alert('Could not join game');
 			}
+		} catch (err) {
+			alert('Could not join game');
 		}
 	}
 
@@ -180,8 +178,8 @@
 	<div class="popup">
 		<div class="popup-container">
 			{#if !joinGameSelected}
-				<button class="controls" on:click={createGame}> Create a new game </button>
-				<button class="controls" on:click={() => (joinGameSelected = true)}> Join a game </button>
+				<button class="setup" on:click={createGame}> Create game </button>
+				<button class="setup" on:click={() => (joinGameSelected = true)}> Join game </button>
 			{/if}
 			{#if joinGameSelected}
 				<input
@@ -192,7 +190,7 @@
 					pattern="\d*"
 					maxlength="4"
 				/>
-				<button class="controls" on:click={joinGame}> Confirm </button>
+				<button class="setup" on:click={joinGame}> Confirm </button>
 			{/if}
 		</div>
 	</div>
@@ -355,9 +353,9 @@
 		display: flex;
 		flex-direction: column;
 		justify-content: flex-start;
-		align-items: flex-start;
+		align-items: center;
 		background-color: #f5f5f5; /* Off-white */
-		padding: 2rem;
+		padding: 3rem;
 		border-radius: 0.5rem;
 		z-index: 10000;
 	}
@@ -366,7 +364,38 @@
 		padding: 0.5rem;
 		font-family: -apple-system, system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Ubuntu, sans-serif;
 		font-size: 16px;
+		font-weight: 600;
+		text-align: center;
 		margin-bottom: 1rem;
 		color: black;
+	}
+
+	.setup {
+		align-items: center;
+		background-clip: padding-box;
+		background-color: #405cf5;
+		border: 1px solid transparent;
+		border-radius: 2rem;
+		box-shadow: rgba(0, 0, 0, 0.02) 0 1px 3px 0;
+		box-sizing: border-box;
+		color: #fff;
+		cursor: pointer;
+		display: inline-flex;
+		font-family: -apple-system, system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Ubuntu, sans-serif;
+		font-size: 16px;
+		font-weight: 500;
+		justify-content: center;
+		line-height: 1.25;
+		margin: 8px;
+		min-height: 3rem;
+		padding: calc(0.875rem - 1px) calc(1.5rem - 1px);
+		position: relative;
+		text-decoration: none;
+		transition: all 250ms;
+		user-select: none;
+		-webkit-user-select: none;
+		touch-action: manipulation;
+		vertical-align: baseline;
+		width: 200px;
 	}
 </style>
