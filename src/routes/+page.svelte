@@ -97,7 +97,7 @@
 	async function joinGame() {
 		joinGameSelected = true;
 		try {
-			const response = await axios.post(backendUrl + 'joinGame', { joinGameId });
+			const response = await axios.post(backendUrl + 'joinGame', { gameId: joinGameId });
 			if (response.data.success) {
 				connectToGame(joinGameId);
 				gameId = joinGameId;
