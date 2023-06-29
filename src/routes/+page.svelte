@@ -2,6 +2,7 @@
 	import { Stone } from './stone.svelte';
 	import Square from './square.svelte';
 	import { onMount, onDestroy } from 'svelte';
+	import axios from 'axios';
 
 	// Constants
 	const gridSize = 19;
@@ -15,10 +16,16 @@
 	let stonesPlaced = 0;
 	let stoneLimit = 1;
 	let movesThisTurn: Array<Array<number>> = [];
+	let gameId: string = '';
 
 	// Connection states
 	let socket: WebSocket;
 	let connected = false;
+
+	// Popup states
+	let popupVisible = true;
+	let joinGameSelected = false;
+	let joinGameId = '';
 
 	// Helper functions
 	function createEmptyGrid() {
@@ -45,7 +52,7 @@
 		stonesPlaced++;
 		movesThisTurn.push([i, j]);
 		movesThisTurn = movesThisTurn;
-		await fetchAction('placeStone', `?i=${i}&j=${j}`);
+		await fetchAction('placeStone', `?i=${i}&j=${j}&gameId=${gameId}`);
 	}
 
 	// Game actions
@@ -53,27 +60,78 @@
 		movesThisTurn.forEach((move) => (grid[move[0]][move[1]] = Stone.None));
 		stonesPlaced = 0;
 		movesThisTurn = [];
-		await fetchAction('undoTurn');
+		await fetchAction('undoTurn', `?gameId=${gameId}`);
 	}
 
 	async function resetGame() {
-		await updateGrid('resetGame');
+		await updateGrid('resetGame', `?gameId=${gameId}`);
 	}
 
 	async function confirm() {
 		if (stonesPlaced !== stoneLimit) {
 			return;
 		}
-		await fetchAction('confirm');
+		await fetchAction('confirm', `?gameId=${gameId}`);
 	}
 
 	// Undo and Redo actions
 	async function undoMove() {
-		await fetchAction('undoMove');
+		await fetchAction('undoMove', `?gameId=${gameId}`);
 	}
 
 	async function redoMove() {
-		await fetchAction('redoMove');
+		await fetchAction('redoMove', `?gameId=${gameId}`);
+	}
+
+	async function createGame() {
+		try {
+			const response = await axios.post('http://localhost:3000/createGame');
+			gameId = response.data.gameId;
+			connectToGame(gameId);
+			popupVisible = false;
+		} catch (err) {
+			alert('Failed to create game, please try again');
+		}
+	}
+
+	async function joinGame() {
+		gameId = joinGameId;
+		joinGameSelected = true;
+		if (gameId) {
+			try {
+				const response = await axios.post('http://localhost:3000/joinGame', { gameId });
+				if (response.data.success) {
+					connectToGame(gameId);
+					popupVisible = false;
+				} else {
+					alert('Could not join game');
+				}
+			} catch (err) {
+				alert('Could not join game');
+			}
+		}
+	}
+
+	let ws: WebSocket;
+
+	function connectToGame(gameId: string) {
+		socket = new WebSocket('ws://localhost:3000');
+
+		socket.onopen = () => {
+			console.log(`Connected to game ${gameId}`);
+			socket.send(JSON.stringify({ action: 'joinGame', gameId }));
+		};
+
+		socket.onmessage = (message) => {
+			console.log(`Received message: ${message.data}`);
+			const { gameState } = JSON.parse(message.data);
+			// update local game state based on server state
+			({ grid, turn, stoneLimit, stonesPlaced, winner, movesThisTurn } = gameState);
+		};
+
+		socket.onclose = () => {
+			console.log('Disconnected from server');
+		};
 	}
 
 	// Initialize WebSocket
@@ -83,21 +141,18 @@
 
 			socket.addEventListener('open', () => (connected = true));
 			socket.addEventListener('close', () => {
-				socket.send('Goodbye Server!');
 				connected = false;
-			});
-
-			socket.addEventListener('message', (event) => {
-				const gameState = JSON.parse(event.data);
-				({ grid, turn, stoneLimit, stonesPlaced, winner, movesThisTurn } = gameState);
-				console.log(gameState);
 			});
 
 			window.addEventListener('keypress', (event) => {
 				switch (event.key) {
 					case 'c':
 					case 'Enter':
-						confirm();
+						if (popupVisible && joinGameSelected) {
+							joinGame();
+						} else {
+							confirm();
+						}
 						break;
 					case 'r':
 						resetGame();
@@ -121,6 +176,28 @@
 	});
 </script>
 
+{#if popupVisible}
+	<div class="popup">
+		<div class="popup-container">
+			{#if !joinGameSelected}
+				<button class="controls" on:click={createGame}> Create a new game </button>
+				<button class="controls" on:click={() => (joinGameSelected = true)}> Join a game </button>
+			{/if}
+			{#if joinGameSelected}
+				<input
+					type="text"
+					bind:value={joinGameId}
+					placeholder="Enter game ID"
+					inputmode="numeric"
+					pattern="\d*"
+					maxlength="4"
+				/>
+				<button class="controls" on:click={joinGame}> Confirm </button>
+			{/if}
+		</div>
+	</div>
+{/if}
+
 <div class="screen">
 	<div>
 		<button class="controls undo" on:click={undoTurn}>Undo Turn (u)</button>
@@ -139,6 +216,9 @@
 			{:else}
 				<p class="win">White Wins!</p>
 			{/if}
+		{/if}
+		{#if gameId}
+			<p>Game ID: {gameId}</p>
 		{/if}
 		{#if !connected}
 			<p class="disconnected">Connecting to server...</p>
@@ -256,5 +336,37 @@
 
 	.confirm {
 		margin: 4px 8px 8px 0px;
+	}
+
+	.popup {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background-color: rgba(0, 0, 0, 0.5);
+		z-index: 9999;
+	}
+
+	.popup-container {
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-start;
+		align-items: flex-start;
+		background-color: #f5f5f5; /* Off-white */
+		padding: 2rem;
+		border-radius: 0.5rem;
+		z-index: 10000;
+	}
+
+	.popup-container input[type='text'] {
+		padding: 0.5rem;
+		font-family: -apple-system, system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Ubuntu, sans-serif;
+		font-size: 16px;
+		margin-bottom: 1rem;
+		color: black;
 	}
 </style>
